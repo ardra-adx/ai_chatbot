@@ -1,23 +1,11 @@
 import openai
 import os
-# from dotenv import load_dotenv # Uncomment if using .env file
-
-# Load environment variables (recommended for API key)
-# load_dotenv()
-# openai.api_key = os.getenv("OPENAI_API_KEY")
-
-# Placeholder for API key if not using environment variables (NOT RECOMMENDED FOR PRODUCTION)
-# For demonstration, I'll keep your provided key, but strongly advise against it for real use.
-# You will need to replace this with your actual key if you run it locally.
 openai.api_key = "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"
-
-
 system_message = {
     "role": "system",
     "content": "You are a friendly customer support assistant for BookWorld, an online bookstore specializing in fiction, non-fiction, and academic books. You are here to help customers with their queries regarding books, orders, and services."
 }
 
-# --- CUSTOM ENTITIES AND ATTRIBUTES (RULE-BASED KNOWLEDGE BASE) ---
 knowledge_base = {
     "shipping": {
         "keywords": ["shipping", "delivery", "shipment", "deliver"],
@@ -54,11 +42,7 @@ knowledge_base = {
 }
 
 print("Welcome to BookWorld! Type 'exit' to end the chat.\n")
-
-# To manage conversation history for the LLM
 conversation_history = [system_message]
-
-# A flag to check if API key might be an issue (simple check)
 api_key_valid = True
 
 while True:
@@ -68,15 +52,11 @@ while True:
     if user_input_lower == "exit":
         print("Chatbot: Thank you for contacting BookWorld. We hope to see you again soon!")
         break
-
-    # --- RULE-BASED RESPONSE ATTEMPT (PRIORITY) ---
     chatbot_reply = None
     for key, data in knowledge_base.items():
         if any(keyword in user_input_lower for keyword in data["keywords"]):
             chatbot_reply = data["answer"]
             break
-
-    # Specific entity handling (more complex rule-based)
     if "order" in user_input_lower and ("status" in user_input_lower or "track" in user_input_lower):
         import re
         order_number_match = re.search(r'(BW\d{5,}|[A-Za-z]{2}\d{5,}|order\s*number\s*is\s*(\w+))', user_input, re.IGNORECASE)
@@ -89,40 +69,32 @@ while True:
     elif "book" in user_input_lower and "recommend" in user_input_lower:
         chatbot_reply = "I'd love to help with book recommendations! What genres are you interested in, or are you looking for something similar to a book you've enjoyed?"
 
-    # --- FALLBACK TO CHATGPT OR GENERIC RULE IF NO SPECIFIC RULE MATCHED ---
     if chatbot_reply:
         print("Chatbot:", chatbot_reply)
-        # Add rule-based reply to conversation history for context if needed by LLM later
         conversation_history.append({"role": "user", "content": user_input})
         conversation_history.append({"role": "assistant", "content": chatbot_reply})
-        continue # Skip OpenAI call for this turn if a rule matched
-
-    # If no rule-based answer, try OpenAI (only if API key is considered valid)
+        continue 
     if not api_key_valid:
         print("Chatbot: I apologize, but I'm currently unable to connect to my advanced AI. Please try rephrasing your question, or you can check our FAQ section on the BookWorld website for common inquiries.")
         continue
-
-    # Add user's input to the conversation history for OpenAI
     conversation_history.append({"role": "user", "content": user_input})
 
     try:
         response = openai.chat.completions.create(
             model="gpt-3.5-turbo",
-            messages=conversation_history, # Pass the full conversation history
-            timeout=15 # Set a timeout for the API call
+            messages=conversation_history, 
+            timeout=15 
         )
         chatbot_reply = response.choices[0].message.content
-        api_key_valid = True # Assume valid if call succeeds
+        api_key_valid = True 
 
     except openai.APIError as e:
         print(f"Chatbot: (OpenAI API Error) I'm sorry, I'm having trouble connecting to my knowledge base right now. It seems there might be an issue with the service or my API key. Please try again in a few moments. Error: {e}")
         chatbot_reply = "I'm sorry, I'm currently experiencing technical difficulties and cannot provide an advanced response. Please try asking your question differently or refer to our website's FAQ."
-        api_key_valid = False # Mark API key as potentially invalid/exhausted for subsequent turns
+        api_key_valid = False 
     except Exception as e:
         print(f"Chatbot: (General Error) An unexpected error occurred: {e}")
         chatbot_reply = "I apologize, but I'm unable to process your request at this moment due to a technical issue. Please try again later."
-        api_key_valid = False # Mark API key as potentially invalid/exhausted
-
+        api_key_valid = False
     print("Chatbot:", chatbot_reply)
-    # Add chatbot's reply to conversation history for OpenAI
     conversation_history.append({"role": "assistant", "content": chatbot_reply})
